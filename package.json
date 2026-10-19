@@ -1,0 +1,47 @@
+{
+  "name": "askscout",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "antd": "^5.8.4",
+    "axios": "^1.5.0",
+    "concurrently": "^8.2.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^8.0.7",
+    "react-scripts": "5.0.1",
+    "react-speech-recognition": "^3.10.0",
+    "speak-tts": "^2.0.8",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "dev": "concurrently \"npm start\" \"npm run server\"",
+    "server": "cd server && .venv/bin/python server.py",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "setup:server": "cd server && python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}

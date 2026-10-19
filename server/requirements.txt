@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+python-multipart
+python-dotenv
+langchain-core
+langchain-community
+langchain-openai
+langchain-text-splitters
+pypdf
+mcp>=1.2,<2
+google-search-results
+beautifulsoup4
+httpx
