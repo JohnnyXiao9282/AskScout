@@ -25,7 +25,7 @@ from fastapi.responses import PlainTextResponse, StreamingResponse  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
 import chat as rag  # noqa: E402
-from agent import close_client, run_agent  # noqa: E402
+from agent import close_client, resolve_approval, run_agent  # noqa: E402
 
 PORT = 5001
 UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
@@ -92,6 +92,18 @@ async def agent(req: AgentRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+class ApprovalRequest(BaseModel):
+    approval_id: str = Field(min_length=1, max_length=100)
+    approved: bool
+
+
+@app.post("/agent/approve")
+async def agent_approve(req: ApprovalRequest):
+    if not resolve_approval(req.approval_id, req.approved):
+        raise HTTPException(404, "No pending approval with that id (it may have expired).")
+    return {"ok": True}
 
 
 if __name__ == "__main__":

@@ -51,7 +51,9 @@ export const runAgent = async ({ task, url, onEvent, signal }) => {
     });
   } catch (e) {
     if (e.name === "AbortError") throw e;
-    throw new Error("Can't reach the server. Is the backend running on port 5001?");
+    throw new Error(
+      "Can't reach the server. Is the backend running on port 5001?"
+    );
   }
   if (!res.ok || !res.body) {
     let detail = `Server error (${res.status})`;
@@ -80,4 +82,14 @@ export const runAgent = async ({ task, url, onEvent, signal }) => {
       } catch {}
     }
   }
+};
+
+/** Approve or decline a risky browser action the agent paused on. */
+export const approveAction = async (approvalId, approved) => {
+  const res = await fetch(`${DOMAIN}/agent/approve`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ approval_id: approvalId, approved }),
+  });
+  if (!res.ok) throw new Error("That request expired.");
 };

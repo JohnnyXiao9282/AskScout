@@ -99,7 +99,7 @@ test("Agent mode streams tool steps and a final answer", async () => {
     target: { value: "https://example.com" },
   });
   await act(async () => {
-    fireEvent.click(screen.getByText("Summarize what this page is about"));
+    fireEvent.click(screen.getByText("Summarize this page and check for broken links"));
   });
 
   expect(await screen.findByText("The site is up.")).toBeInTheDocument();
@@ -107,7 +107,7 @@ test("Agent mode streams tool steps and a final answer", async () => {
   expect(screen.getByText("Read “Example Domain”")).toBeInTheDocument();
   expect(screen.getByText("Example Domain")).toHaveAttribute("href", "https://example.com");
   expect(api.runAgent).toHaveBeenCalledWith(
-    expect.objectContaining({ task: "Summarize what this page is about", url: "https://example.com" })
+    expect.objectContaining({ task: "Summarize this page and check for broken links", url: "https://example.com" })
   );
   expect(api.ask).not.toHaveBeenCalled();
 });

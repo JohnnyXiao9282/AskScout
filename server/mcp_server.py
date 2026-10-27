@@ -281,6 +281,12 @@ def check_url(url: str) -> str:
         return _error(e)
 
 
+# Interactive browser tools (open/click/type/...) share the same safety check.
+import browser_tools  # noqa: E402
+
+browser_tools.register(mcp, _check_safe)
+
+
 if __name__ == "__main__":
     # Log to stderr; stdout is reserved for the MCP protocol.
     print("AskScout MCP web tools running on stdio.", file=sys.stderr)

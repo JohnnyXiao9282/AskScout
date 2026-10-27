@@ -11,3 +11,4 @@ mcp>=1.2,<2
 google-search-results
 beautifulsoup4
 httpx
+playwright>=1.45

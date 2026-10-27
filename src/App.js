@@ -43,14 +43,14 @@ const SUGGESTIONS = {
     "Give me tips for writing a strong resume",
   ],
   agentUrl: [
-    "Summarize what this page is about",
-    "Is this site up? Check for broken or redirecting links",
-    "Find pricing, contact info and key dates on this site",
+    "Search this site for “pricing” and tell me the plans",
+    "Click through to the docs and find the install steps",
+    "Summarize this page and check for broken links",
   ],
   agent: [
-    "What's the latest release of Python and what's new in it?",
+    "Go to https://news.ycombinator.com, open the top story and summarize it",
+    "On https://en.wikipedia.org search for “Model Context Protocol” and summarize",
     "Check if https://example.com is up and what it says",
-    "Compare the pricing pages of Vercel and Netlify",
   ],
 };
 
@@ -60,7 +60,14 @@ const loadConversation = () => {
     // Anything still loading was interrupted by a refresh.
     return saved.map((e) =>
       e.answer?.status === "loading"
-        ? { ...e, answer: { ...e.answer, status: "error", error: "Interrupted. Retry?" } }
+        ? {
+            ...e,
+            answer: {
+              ...e.answer,
+              status: "error",
+              error: "Interrupted. Retry?",
+            },
+          }
         : e
     );
   } catch {
@@ -78,11 +85,33 @@ export const Logo = ({ size = 32 }) => (
         <stop offset="1" stopColor="#c7f9ff" />
       </linearGradient>
     </defs>
-    <circle cx="32" cy="32" r="26" fill="none" stroke="url(#lg)" strokeWidth="5" />
-    <ellipse cx="32" cy="32" rx="11" ry="26" fill="none" stroke="url(#lg)" strokeWidth="3" />
+    <circle
+      cx="32"
+      cy="32"
+      r="26"
+      fill="none"
+      stroke="url(#lg)"
+      strokeWidth="5"
+    />
+    <ellipse
+      cx="32"
+      cy="32"
+      rx="11"
+      ry="26"
+      fill="none"
+      stroke="url(#lg)"
+      strokeWidth="3"
+    />
     <path d="M8 32h48" stroke="url(#lg)" strokeWidth="3" />
     <circle cx="48" cy="48" r="9" fill="#ffd166" />
-    <text x="48" y="52" textAnchor="middle" fontSize="12" fontWeight="700" fill="#4834d4">
+    <text
+      x="48"
+      y="52"
+      textAnchor="middle"
+      fontSize="12"
+      fontWeight="700"
+      fill="#4834d4"
+    >
       ?
     </text>
   </svg>
@@ -91,9 +120,13 @@ export const Logo = ({ size = 32 }) => (
 const App = () => {
   const [conversation, setConversation] = useState(loadConversation);
   const [activeDoc, setActiveDoc] = useState(null);
-  const [mode, setMode] = useState(() => localStorage.getItem(MODE_KEY) || "ask");
+  const [mode, setMode] = useState(
+    () => localStorage.getItem(MODE_KEY) || "ask"
+  );
   const [agentUrl, setAgentUrl] = useState("");
-  const [isDark, setIsDark] = useState(() => localStorage.getItem(THEME_KEY) === "1");
+  const [isDark, setIsDark] = useState(
+    () => localStorage.getItem(THEME_KEY) === "1"
+  );
   const controllers = useRef({});
   const speech = useSpeech();
 
@@ -106,7 +139,15 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversation));
+    // Screenshots are large; don't persist them.
+    const slim = conversation.map((e) =>
+      e.answer?.screenshot
+        ? { ...e, answer: { ...e.answer, screenshot: undefined } }
+        : e
+    );
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
+    } catch {}
   }, [conversation]);
 
   useEffect(() => {
@@ -122,14 +163,20 @@ const App = () => {
     setConversation((prev) =>
       prev.map((e) =>
         e.id === id
-          ? { ...e, answer: typeof update === "function" ? update(e.answer) : update }
+          ? {
+              ...e,
+              answer: typeof update === "function" ? update(e.answer) : update,
+            }
           : e
       )
     );
 
   const runAsk = useCallback(
     async (id, question) => {
-      setAnswer(id, { status: "loading", kind: activeDoc ? "document" : "general" });
+      setAnswer(id, {
+        status: "loading",
+        kind: activeDoc ? "document" : "general",
+      });
       try {
         const data = await ask(question);
         const answer = {
@@ -159,13 +206,51 @@ const App = () => {
       if (ev.type === "step") {
         setAnswer(id, (a) => ({
           ...a,
-          steps: [...(a.steps || []), { id: ev.id, tool: ev.tool, args: ev.args, status: "running" }],
+          steps: [
+            ...(a.steps || []),
+            { id: ev.id, tool: ev.tool, args: ev.args, status: "running" },
+          ],
         }));
       } else if (ev.type === "result") {
         setAnswer(id, (a) => ({
           ...a,
+          ...(ev.screenshot ? { screenshot: ev.screenshot } : {}),
           steps: (a.steps || []).map((s) =>
-            s.id === ev.id ? { ...s, status: ev.ok ? "ok" : "failed", summary: ev.summary } : s
+            s.id === ev.id
+              ? { ...s, status: ev.ok ? "ok" : "failed", summary: ev.summary }
+              : s
+          ),
+        }));
+      } else if (ev.type === "approval") {
+        setAnswer(id, (a) => ({
+          ...a,
+          steps: (a.steps || []).map((s) =>
+            s.id === ev.id
+              ? {
+                  ...s,
+                  approval: {
+                    id: ev.approval_id,
+                    action: ev.action,
+                    reason: ev.reason,
+                    state: "pending",
+                  },
+                }
+              : s
+          ),
+        }));
+      } else if (ev.type === "approval_result") {
+        setAnswer(id, (a) => ({
+          ...a,
+          steps: (a.steps || []).map((s) =>
+            s.id === ev.id && s.approval
+              ? {
+                  ...s,
+                  approval: {
+                    ...s.approval,
+                    state: ev.approved ? "approved" : "declined",
+                  },
+                }
+              : s
           ),
         }));
       } else if (ev.type === "answer") {
@@ -180,7 +265,10 @@ const App = () => {
     try {
       await runAgent({ task, url, onEvent, signal: controller.signal });
       if (!final) {
-        final = { status: "error", error: "The agent stopped without an answer. Retry?" };
+        final = {
+          status: "error",
+          error: "The agent stopped without an answer. Retry?",
+        };
         setAnswer(id, (a) => ({ ...a, ...final }));
       }
     } catch (e) {
@@ -192,7 +280,9 @@ const App = () => {
         ...a,
         ...final,
         steps: (a.steps || []).map((s) =>
-          s.status === "running" ? { ...s, status: "failed", summary: "Stopped" } : s
+          s.status === "running"
+            ? { ...s, status: "failed", summary: "Stopped" }
+            : s
         ),
       }));
     } finally {
@@ -208,7 +298,9 @@ const App = () => {
       ...prev,
       { id, mode, question, url, answer: { status: "loading" } },
     ]);
-    return mode === "agent" ? runAgentEntry(id, question, url) : runAsk(id, question);
+    return mode === "agent"
+      ? runAgentEntry(id, question, url)
+      : runAsk(id, question);
   };
 
   const handleRetry = (id) => {
@@ -245,7 +337,9 @@ const App = () => {
   return (
     <ConfigProvider
       theme={{
-        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
+        algorithm: isDark
+          ? antdTheme.darkAlgorithm
+          : antdTheme.defaultAlgorithm,
         token: {
           colorPrimary: "#6C5CE7",
           borderRadius: 12,
@@ -260,7 +354,9 @@ const App = () => {
             <Logo />
             <h1 className="app-title">AskScout</h1>
             <span className="app-subtitle">
-              {mode === "agent" ? "Your web research agent" : "Ask your documents"}
+              {mode === "agent"
+                ? "Your web research agent"
+                : "Ask your documents"}
             </span>
           </div>
           <div className="header-actions">
@@ -288,7 +384,11 @@ const App = () => {
         </Header>
 
         <Content className="app-content">
-          <div className={`card top-card ${mode === "ask" && !activeDoc ? "" : "compact"}`}>
+          <div
+            className={`card top-card ${
+              mode === "ask" && !activeDoc ? "" : "compact"
+            }`}
+          >
             <Segmented
               className="mode-switch"
               value={mode}
@@ -327,7 +427,12 @@ const App = () => {
                 <p>{emptyText}</p>
                 <div className="suggestions">
                   {suggestions.map((s) => (
-                    <Button key={s} shape="round" onClick={() => handleAsk(s)} disabled={isLoading}>
+                    <Button
+                      key={s}
+                      shape="round"
+                      onClick={() => handleAsk(s)}
+                      disabled={isLoading}
+                    >
                       {s}
                     </Button>
                   ))}

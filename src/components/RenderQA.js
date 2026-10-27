@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import { Alert, Button, Spin, Tag, Tooltip, message } from "antd";
+import { approveAction } from "../api";
 import {
   CheckCircleFilled,
   CloseCircleFilled,
@@ -27,10 +28,79 @@ const TOOLS = {
   fetch_url: { icon: "📄", text: (a) => `Opened ${short(a.url)}` },
   find_in_page: {
     icon: "🔍",
-    text: (a) => `Looked for ${(a.keywords || []).map((k) => `“${k}”`).join(", ")} on ${short(a.url)}`,
+    text: (a) =>
+      `Looked for ${(a.keywords || [])
+        .map((k) => `“${k}”`)
+        .join(", ")} on ${short(a.url)}`,
   },
   extract_links: { icon: "🔗", text: (a) => `Listed links on ${short(a.url)}` },
   check_url: { icon: "🩺", text: (a) => `Checked ${short(a.url)}` },
+  browser_open: {
+    icon: "🧭",
+    text: (a) => `Opened ${short(a.url)} in browser`,
+  },
+  browser_snapshot: { icon: "👀", text: () => "Looked at the page" },
+  browser_click: { icon: "🖱️", text: (a) => `Clicked ${a.ref}` },
+  browser_type: {
+    icon: "⌨️",
+    text: (a) =>
+      `Typed “${(a.text || "").slice(0, 60)}”${a.submit ? " + Enter" : ""}`,
+  },
+  browser_select: { icon: "🔽", text: (a) => `Selected “${a.option}”` },
+  browser_scroll: {
+    icon: "↕️",
+    text: (a) => `Scrolled ${a.direction || "down"}`,
+  },
+  browser_back: { icon: "↩️", text: () => "Went back" },
+};
+
+const Approval = ({ approval }) => {
+  const [busy, setBusy] = useState(false);
+  if (approval.state !== "pending") {
+    return (
+      <span className={`step-approval-state ${approval.state}`}>
+        {approval.state === "approved" ? "✅ You approved" : "🚫 You declined"}:{" "}
+        {approval.action}
+      </span>
+    );
+  }
+  const answer = async (ok) => {
+    setBusy(true);
+    try {
+      await approveAction(approval.id, ok);
+    } catch (e) {
+      message.error(e.message);
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="step-approval" role="alert">
+      <div>
+        <strong>Allow this?</strong> {approval.action}
+        {approval.reason && (
+          <div className="step-summary">{approval.reason}</div>
+        )}
+      </div>
+      <div className="step-approval-buttons">
+        <Button
+          size="small"
+          type="primary"
+          loading={busy}
+          onClick={() => answer(true)}
+        >
+          Allow
+        </Button>
+        <Button
+          size="small"
+          danger
+          disabled={busy}
+          onClick={() => answer(false)}
+        >
+          Decline
+        </Button>
+      </div>
+    </div>
+  );
 };
 
 const describe = (step) => {
@@ -68,6 +138,7 @@ const Steps = ({ steps, running }) => {
               <span className="step-body">
                 <span className="step-text">{d.text}</span>
                 {s.summary && <span className="step-summary">{s.summary}</span>}
+                {s.approval && <Approval approval={s.approval} />}
               </span>
             </li>
           );
@@ -131,6 +202,16 @@ const AnswerCard = ({ entry, onRetry, onStop, speech }) => {
 
       {isAgent && <Steps steps={answer.steps} running={status === "loading"} />}
 
+      {isAgent && answer.screenshot && (
+        <details className="browser-view" open={status === "loading"}>
+          <summary>🖥️ Browser view</summary>
+          <img
+            src={`data:image/jpeg;base64,${answer.screenshot}`}
+            alt="What the agent's browser sees"
+          />
+        </details>
+      )}
+
       {status === "loading" && (
         <div className="answer-loading">
           <Spin size="small" />
@@ -167,7 +248,9 @@ const AnswerCard = ({ entry, onRetry, onStop, speech }) => {
       {status === "done" && (
         <>
           <div className="answer-body">
-            <ReactMarkdown linkTarget="_blank">{answer.text || ""}</ReactMarkdown>
+            <ReactMarkdown linkTarget="_blank">
+              {answer.text || ""}
+            </ReactMarkdown>
           </div>
           <Sources sources={answer.sources} />
           <div className="answer-actions">
@@ -189,7 +272,9 @@ const AnswerCard = ({ entry, onRetry, onStop, speech }) => {
                   onClick={() =>
                     speech.speaking ? speech.stop() : speech.speak(answer.text)
                   }
-                  aria-label={speech.speaking ? "Stop reading" : "Read answer aloud"}
+                  aria-label={
+                    speech.speaking ? "Stop reading" : "Read answer aloud"
+                  }
                 />
               </Tooltip>
             )}
