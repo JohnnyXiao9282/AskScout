@@ -27,7 +27,8 @@ import "./App.css";
 
 const { Header, Content, Footer } = Layout;
 
-const STORAGE_KEY = "askscout.conversation.v2";
+// Old chat-history keys; cleared on load (history is no longer saved).
+const LEGACY_KEYS = ["askscout.conversation.v2", "askscout.conversation.v1"];
 const THEME_KEY = "askscout.dark";
 const MODE_KEY = "askscout.mode";
 
@@ -52,27 +53,6 @@ const SUGGESTIONS = {
     "On https://en.wikipedia.org search for “Model Context Protocol” and summarize",
     "Check if https://example.com is up and what it says",
   ],
-};
-
-const loadConversation = () => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-    // Anything still loading was interrupted by a refresh.
-    return saved.map((e) =>
-      e.answer?.status === "loading"
-        ? {
-            ...e,
-            answer: {
-              ...e.answer,
-              status: "error",
-              error: "Interrupted. Retry?",
-            },
-          }
-        : e
-    );
-  } catch {
-    return [];
-  }
 };
 
 const newId = () => `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -118,7 +98,7 @@ export const Logo = ({ size = 32 }) => (
 );
 
 const App = () => {
-  const [conversation, setConversation] = useState(loadConversation);
+  const [conversation, setConversation] = useState([]);
   const [activeDoc, setActiveDoc] = useState(null);
   const [mode, setMode] = useState(
     () => localStorage.getItem(MODE_KEY) || "ask"
@@ -138,17 +118,10 @@ const App = () => {
       .catch(() => {});
   }, []);
 
+  // Chat history is not persisted; also remove anything saved by older versions.
   useEffect(() => {
-    // Screenshots are large; don't persist them.
-    const slim = conversation.map((e) =>
-      e.answer?.screenshot
-        ? { ...e, answer: { ...e.answer, screenshot: undefined } }
-        : e
-    );
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(slim));
-    } catch {}
-  }, [conversation]);
+    LEGACY_KEYS.forEach((k) => localStorage.removeItem(k));
+  }, []);
 
   useEffect(() => {
     localStorage.setItem(MODE_KEY, mode);

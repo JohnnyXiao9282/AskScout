@@ -23,7 +23,7 @@ Both modes support voice input and read-aloud answers.
   submit, delete, ...) pause for your **Allow / Decline**.
 - Live agent steps over Server-Sent Events, with a Stop button.
 - Markdown answers with sources, plus copy, read-aloud and regenerate actions.
-- Voice mode (speech-to-text and text-to-speech), dark mode, chat history saved in the browser.
+- Voice mode (speech-to-text and text-to-speech), dark mode. Chat history is not saved; refreshing starts a new chat.
 
 ## Tech stack
 
